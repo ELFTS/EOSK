@@ -22,7 +22,7 @@ jobs:
     runs-on: windows-latest
 
     env:
-      Solution_Path: EKSE.slnx
+      Solution_Path: EOSK.slnx
 
     steps:
 
@@ -55,5 +55,5 @@ jobs:
         with:
           retention-days: 7
           path: |
-            EKSE/bin/Release/net9.0-windows
+            EOSK/bin/Release/net9.0-windows
           compression-level: 0
