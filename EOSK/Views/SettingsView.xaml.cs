@@ -1,0 +1,557 @@
+using System;
+using System.IO;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Media;
+using Microsoft.Win32;
+using MaterialDesignColors;
+using MaterialDesignThemes.Wpf;
+using EOSK.Services;
+
+namespace EOSK.Views
+{
+    /// <summary>
+    /// SettingsView.xaml 的交互逻辑
+    /// </summary>
+    public partial class SettingsView : UserControl
+    {
+        // 定义颜色更改事件
+        public event EventHandler<Color> ThemeColorChanged;
+        
+        // 保存当前选中的颜色
+        private static Color _currentThemeColor = Colors.Purple;
+        
+        // 保存当前设置
+        private AppSettings _currentSettings;
+        
+        // 标志位，用于防止在初始化过程中触发事件处理
+        private bool _isInitializing = true;
+
+        public SettingsView()
+        {
+            InitializeComponent();
+            Loaded += SettingsView_Loaded;
+        }
+
+        private void SettingsView_Loaded(object sender, RoutedEventArgs e)
+        {
+            _isInitializing = true;
+            InitializeConfigManagement();
+            LoadCurrentSettings();
+            // 注意：LoadCurrentSettings已经调用了RestoreColorSelection，这里不需要重复调用
+            
+            // 初始化完成后，允许事件处理
+            _isInitializing = false;
+            
+            // 取消订阅Loaded事件以避免重复触发（可选）
+            Loaded -= SettingsView_Loaded;
+        }
+        
+        /// <summary>
+        /// 公共方法，用于在外部需要时刷新设置
+        /// </summary>
+        public void RefreshSettings()
+        {
+            _isInitializing = true;
+            LoadCurrentSettings();
+            _isInitializing = false;
+        }
+
+        private void InitializeConfigManagement()
+        {
+            System.Diagnostics.Debug.WriteLine("初始化配置管理");
+            
+            // 只注册颜色选项和开关控件的事件处理程序，移除配置管理初始化
+            RegisterColorOptionEvents();
+            
+            // 注册开关控件的事件处理程序
+            RegisterToggleEvents();
+        }
+
+        // 注册颜色选项事件
+        private void RegisterColorOptionEvents()
+        {
+            System.Diagnostics.Debug.WriteLine("注册颜色选项事件");
+            
+            PurpleColorOption.Checked += ColorOption_Checked;
+            BlueColorOption.Checked += ColorOption_Checked;
+            GreenColorOption.Checked += ColorOption_Checked;
+            OrangeColorOption.Checked += ColorOption_Checked;
+            RedColorOption.Checked += ColorOption_Checked;
+            PinkColorOption.Checked += ColorOption_Checked;
+            IndigoColorOption.Checked += ColorOption_Checked;
+            TealColorOption.Checked += ColorOption_Checked;
+            LimeColorOption.Checked += ColorOption_Checked;
+        }
+
+        // 取消注册颜色选项事件
+        private void UnregisterColorOptionEvents()
+        {
+            System.Diagnostics.Debug.WriteLine("取消注册颜色选项事件");
+            
+            PurpleColorOption.Checked -= ColorOption_Checked;
+            BlueColorOption.Checked -= ColorOption_Checked;
+            GreenColorOption.Checked -= ColorOption_Checked;
+            OrangeColorOption.Checked -= ColorOption_Checked;
+            RedColorOption.Checked -= ColorOption_Checked;
+            PinkColorOption.Checked -= ColorOption_Checked;
+            IndigoColorOption.Checked -= ColorOption_Checked;
+            TealColorOption.Checked -= ColorOption_Checked;
+            LimeColorOption.Checked -= ColorOption_Checked;
+        }
+
+        private void LoadCurrentSettings()
+        {
+            try
+            {
+                // 从应用程序设置管理器加载当前设置（使用单例模式）
+                _currentSettings = ((App)Application.Current).SettingsManager.GetCurrentSettings();
+                
+                System.Diagnostics.Debug.WriteLine($"=== 加载设置 ===");
+                System.Diagnostics.Debug.WriteLine($"_currentSettings实例: {_currentSettings?.GetHashCode()}");
+                System.Diagnostics.Debug.WriteLine($"AutoStart값: {_currentSettings?.AutoStart}");
+                
+                // 确保_currentSettings不为null
+                if (_currentSettings == null)
+                {
+                    _currentSettings = new AppSettings();
+                    System.Diagnostics.Debug.WriteLine("LoadCurrentSettings: 创建了新的AppSettings实例");
+                }
+                
+                System.Diagnostics.Debug.WriteLine($"加载当前设置: ThemeColor={_currentSettings.ThemeColor}, AutoStart={_currentSettings.AutoStart}");
+                
+                // 应用保存的设置到UI控件
+                ApplySettingsToUI();
+                
+                // 注意：ApplySettingsToUI已经调用了RestoreColorSelection，这里不需要重复调用
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"加载当前设置时出错: {ex.Message}");
+                // 出错时使用默认设置
+                _currentSettings = new AppSettings();
+                _currentThemeColor = Colors.Purple;
+                ApplySettingsToUI();
+            }
+        }
+
+        // 应用设置到UI控件
+        private void ApplySettingsToUI()
+        {
+            System.Diagnostics.Debug.WriteLine("开始应用设置到UI");
+            
+            if (_currentSettings != null)
+            {
+                // 应用保存的主题颜色
+                if (!string.IsNullOrEmpty(_currentSettings.ThemeColor))
+                {
+                    var color = (Color)ColorConverter.ConvertFromString(_currentSettings.ThemeColor);
+                    _currentThemeColor = color;
+                    System.Diagnostics.Debug.WriteLine($"已应用主题颜色到_currentThemeColor: {color}");
+                    
+                    // 同时更新标题栏颜色
+                    UpdateTitleBarColor(color);
+                    
+                    // 应用主题颜色到MaterialDesignThemes
+                    ApplyThemeColor(color);
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("主题颜色为空，使用默认紫色");
+                    _currentThemeColor = Colors.Purple;
+                    UpdateTitleBarColor(Colors.Purple);
+                    ApplyThemeColor(Colors.Purple);
+                }
+                
+                // 恢复颜色选择状态
+                RestoreColorSelection();
+                
+                // 恢复开关控件状态
+                RestoreToggleStates();
+                
+                // 应用保存的主题类型设置
+                if (_currentSettings.ThemeType == "Dark")
+                {
+                    // 如果有主题选择的ComboBox，设置为深色主题
+                    // 这里暂时不实现，因为需要找到具体的控件名称
+                }
+                
+                // 应用保存的开机自启设置
+                // 这个设置通常在主窗口或应用程序级别处理
+            }
+        }
+
+        // 恢复颜色选择状态
+        private void RestoreColorSelection()
+        {
+            System.Diagnostics.Debug.WriteLine($"恢复颜色选择状态，当前主题颜色: {_currentThemeColor}");
+            
+            // 移除事件处理程序以避免在设置选中状态时触发事件
+            UnregisterColorOptionEvents();
+            
+            // 根据当前主题颜色设置选中状态
+            // 使用Color的RGB值进行比较，而不是字符串比较
+            if (_currentThemeColor.Equals(Colors.Red))
+            {
+                RedColorOption.IsChecked = true;
+                System.Diagnostics.Debug.WriteLine("已恢复选择红色");
+            }
+            else if (_currentThemeColor.Equals(Colors.Green))
+            {
+                GreenColorOption.IsChecked = true;
+                System.Diagnostics.Debug.WriteLine("已恢复选择绿色");
+            }
+            else if (_currentThemeColor.Equals(Colors.Blue))
+            {
+                BlueColorOption.IsChecked = true;
+                System.Diagnostics.Debug.WriteLine("已恢复选择蓝色");
+            }
+            else if (_currentThemeColor.Equals(Colors.Orange))
+            {
+                OrangeColorOption.IsChecked = true;
+                System.Diagnostics.Debug.WriteLine("已恢复选择橙色");
+            }
+            else if (_currentThemeColor.Equals(Colors.DeepPink))
+            {
+                PinkColorOption.IsChecked = true;
+                System.Diagnostics.Debug.WriteLine("已恢复选择粉色");
+            }
+            else if (_currentThemeColor.Equals(Colors.Indigo))
+            {
+                IndigoColorOption.IsChecked = true;
+                System.Diagnostics.Debug.WriteLine("已恢复选择靛蓝色");
+            }
+            else if (_currentThemeColor.Equals(Colors.Teal))
+            {
+                TealColorOption.IsChecked = true;
+                System.Diagnostics.Debug.WriteLine("已恢复选择蓝绿色");
+            }
+            else if (_currentThemeColor.Equals(Colors.LimeGreen))
+            {
+                LimeColorOption.IsChecked = true;
+                System.Diagnostics.Debug.WriteLine("已恢复选择青绿色");
+            }
+            else // 默认为紫色
+            {
+                PurpleColorOption.IsChecked = true;
+                System.Diagnostics.Debug.WriteLine("已恢复选择紫色（默认）");
+            }
+            
+            // 重新添加事件处理程序
+            RegisterColorOptionEvents();
+        }
+
+        // 恢复开关控件状态
+        private void RestoreToggleStates()
+        {
+            System.Diagnostics.Debug.WriteLine("恢复开关控件状态");
+            System.Diagnostics.Debug.WriteLine($"_currentSettings实例: {_currentSettings?.GetHashCode()}");
+            System.Diagnostics.Debug.WriteLine($"_currentSettings.AutoStart: {_currentSettings?.AutoStart}");
+            System.Diagnostics.Debug.WriteLine($"AutoStartToggle: {AutoStartToggle?.GetHashCode()}");
+            if (_currentSettings != null)
+            {
+                // 恢复开机自启开关状态
+                if (AutoStartToggle != null)
+                {
+                    AutoStartToggle.IsChecked = _currentSettings.AutoStart;
+                    System.Diagnostics.Debug.WriteLine($"恢复开机自启开关状态: {_currentSettings.AutoStart}");
+                }
+            }
+        }
+
+        private void ResetSettingsButton_Click(object sender, RoutedEventArgs e)
+        {
+            var result = MessageBox.Show("确定要重置所有设置吗？这将恢复到默认配置。", "确认重置", 
+                MessageBoxButton.YesNo, MessageBoxImage.Question);
+            
+            if (result == MessageBoxResult.Yes)
+            {
+                // 重置颜色为默认紫色
+                _currentThemeColor = Colors.Purple;
+                
+                // 更新颜色选择状态
+                RestoreColorSelection();
+                
+                // 重置主题
+                ApplyThemeColor(_currentThemeColor);
+                UpdateTitleBarColor(_currentThemeColor);
+                
+                // 更新当前设置
+                if (_currentSettings == null)
+                {
+                    _currentSettings = new AppSettings();
+                }
+                
+                _currentSettings.ThemeColor = _currentThemeColor.ToString();
+                // 重置其他设置为默认值
+                _currentSettings.AutoStart = false;
+                _currentSettings.Volume = 80;
+                _currentSettings.ThemeType = "Light";
+                
+                // 保存设置
+                ((App)Application.Current).SettingsManager.SaveSettings(_currentSettings);
+                
+                // 触发颜色更改事件
+                ThemeColorChanged?.Invoke(this, _currentThemeColor);
+                
+                MessageBox.Show("设置已重置为默认值", "重置完成", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+        }
+
+        private void UpdateCurrentSettings()
+        {
+            System.Diagnostics.Debug.WriteLine("开始更新当前设置");
+            
+            // 确保_currentSettings不为null
+            if (_currentSettings == null)
+            {
+                System.Diagnostics.Debug.WriteLine("_currentSettings为null，从设置管理器重新加载");
+                _currentSettings = ((App)Application.Current).SettingsManager.GetCurrentSettings();
+                
+                // 如果还是null，则创建默认设置
+                if (_currentSettings == null)
+                {
+                    _currentSettings = new AppSettings();
+                    System.Diagnostics.Debug.WriteLine("创建了新的AppSettings实例");
+                }
+            }
+            
+            if (_currentSettings != null)
+            {
+                // 更新主题颜色，使用十六进制格式保存颜色
+                _currentSettings.ThemeColor = "#" + _currentThemeColor.ToString().Replace("#", "");
+                
+                // 更新开关控件状态
+                if (AutoStartToggle != null)
+                {
+                    // 如果开关控件的IsChecked为null，保持原来设置不变
+                    if (AutoStartToggle.IsChecked.HasValue)
+                    {
+                        _currentSettings.AutoStart = AutoStartToggle.IsChecked.Value;
+                    }
+                    System.Diagnostics.Debug.WriteLine($"更新开机自启设置: {_currentSettings.AutoStart}");
+                }
+                
+                
+                // 更新其他设置（如果存在对应的控件）
+                // TODO: 添加其他设置控件的更新逻辑
+                
+                System.Diagnostics.Debug.WriteLine($"已更新当前设置: ThemeColor={_currentSettings.ThemeColor}, AutoStart={_currentSettings.AutoStart}");
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine("错误：_currentSettings为null，无法更新设置");
+            }
+        }
+
+        private void ColorOption_Checked(object sender, RoutedEventArgs e)
+        {
+            // 如果正在初始化过程中，则不处理事件
+            if (_isInitializing)
+            {
+                System.Diagnostics.Debug.WriteLine("正在初始化过程中，忽略ColorOption_Checked事件");
+                return;
+            }
+            
+            System.Diagnostics.Debug.WriteLine("ColorOption_Checked事件被触发");
+            
+            if (sender is RadioButton radioButton)
+            {
+                System.Diagnostics.Debug.WriteLine($"选中的RadioButton: {radioButton.Name}");
+                
+                // 获取选中的颜色
+                var color = GetColorFromRadioButton(radioButton);
+                
+                // 保存当前颜色
+                _currentThemeColor = color;
+                System.Diagnostics.Debug.WriteLine($"当前主题颜色已更新为: {_currentThemeColor}");
+                
+                // 应用颜色到应用程序资源
+                ApplyThemeColor(color);
+                
+                // 更新标题栏颜色资源
+                UpdateTitleBarColor(color);
+                
+                // 确保_currentSettings不为null
+                if (_currentSettings == null)
+                {
+                    System.Diagnostics.Debug.WriteLine("_currentSettings为null，从设置管理器重新加载");
+                    _currentSettings = ((App)Application.Current).SettingsManager.GetCurrentSettings();
+                    
+                    // 如果还是null，则创建默认设置
+                    if (_currentSettings == null)
+                    {
+                        _currentSettings = new AppSettings();
+                        System.Diagnostics.Debug.WriteLine("创建了新的AppSettings实例");
+                    }
+                }
+                
+                // 更新当前设置
+                UpdateCurrentSettings();
+                
+                // 保存设置
+                System.Diagnostics.Debug.WriteLine("准备保存设置...");
+                if (_currentSettings != null)
+                {
+                    ((App)Application.Current).SettingsManager.SaveSettings(_currentSettings);
+                    System.Diagnostics.Debug.WriteLine("设置保存完成");
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("错误：_currentSettings为null，无法保存设置");
+                }
+                
+                // 强制刷新按钮样式
+                RefreshButtonStyles();
+                
+                // 触发颜色更改事件
+                ThemeColorChanged?.Invoke(this, color);
+            }
+        }
+        
+        /// <summary>
+        /// 强制刷新按钮样式
+        /// </summary>
+        private void RefreshButtonStyles()
+        {
+            // 重新应用样式到所有按钮 - 移除对已删除按钮的引用
+            // 现在配置管理按钮已被移除，无需刷新这些按钮的样式
+        }
+
+        private Color GetColorFromRadioButton(RadioButton radioButton)
+        {
+            switch (radioButton.Name)
+            {
+                case "PurpleColorOption":
+                    return Colors.Purple;
+                case "BlueColorOption":
+                    return Colors.Blue;
+                case "GreenColorOption":
+                    return Colors.Green;
+                case "OrangeColorOption":
+                    return Colors.Orange;
+                case "RedColorOption":
+                    return Colors.Red;
+                case "PinkColorOption":
+                    return Colors.DeepPink;
+                case "IndigoColorOption":
+                    return Colors.Indigo;
+                case "TealColorOption":
+                    return Colors.Teal;
+                case "LimeColorOption":
+                    return Colors.LimeGreen;
+                default:
+                    return Colors.Purple; // 默认颜色
+            }
+        }
+
+        private void ApplyThemeColor(Color color)
+        {
+            try
+            {
+                // 使用MaterialDesignThemes库应用主题颜色
+                var paletteHelper = new PaletteHelper();
+                var theme = paletteHelper.GetTheme();
+                
+                // 创建新的颜色方案
+                theme.PrimaryLight = new ColorPair(
+                    Color.FromArgb(100, color.R, color.G, color.B),
+                    Colors.Black);
+                theme.PrimaryMid = new ColorPair(color, Colors.White);
+                theme.PrimaryDark = new ColorPair(
+                    Color.FromArgb(255, 
+                        Math.Max((byte)0, (byte)(color.R * 0.7)), 
+                        Math.Max((byte)0, (byte)(color.G * 0.7)), 
+                        Math.Max((byte)0, (byte)(color.B * 0.7))), 
+                    Colors.White);
+                
+                // 应用新主题
+                paletteHelper.SetTheme(theme);
+                
+                // 更新当前主题颜色
+                ((App)Application.Current).SetCurrentThemeColor(color);
+                
+                // 更新渐变按钮样式以反映新的主题颜色
+                ((App)Application.Current).UpdateGradientButtonStyle();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"更新主题颜色时出错: {ex.Message}");
+            }
+        }
+        
+        private void UpdateTitleBarColor(Color color)
+        {
+            try
+            {
+                if (Application.Current != null && Application.Current.Resources != null)
+                {
+                    // 创建新的画笔 - 使用线性渐变而不是纯色
+                    var newBrush = BrushHelper.CreateTitleBarBrush(color);
+                    
+                    // 更新标题栏背景色资源
+                    Application.Current.Resources["TitleBarBackground"] = newBrush;
+                    System.Diagnostics.Debug.WriteLine($"标题栏颜色已更新: {color}");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"更新标题栏颜色时出错: {ex.Message}");
+            }
+        }
+
+        private void Toggle_Checked(object sender, RoutedEventArgs e)
+        {
+            // 如果正在初始化过程中，则不处理事件
+            if (_isInitializing)
+            {
+                System.Diagnostics.Debug.WriteLine("正在初始化过程中，忽略Toggle_Checked事件");
+                return;
+            }
+            
+            System.Diagnostics.Debug.WriteLine("开关控件状态发生变化");
+            
+            // 更新当前设置
+            UpdateCurrentSettings();
+            
+            // 保存设置（使用单例模式）
+            if (_currentSettings != null)
+            {
+                ((App)Application.Current).SettingsManager.SaveSettings(_currentSettings);
+                System.Diagnostics.Debug.WriteLine("开关设置已保存");
+            }
+        }
+
+        // 注册开关控件事件
+        private void RegisterToggleEvents()
+        {
+            System.Diagnostics.Debug.WriteLine("注册开关控件事件");
+            
+            if (AutoStartToggle != null)
+            {
+                AutoStartToggle.Checked += Toggle_Checked;
+                AutoStartToggle.Unchecked += Toggle_Checked;
+                System.Diagnostics.Debug.WriteLine("已注册AutoStartToggle事件");
+            }
+            
+            // 移除最小化到托盘开关的注册
+        }
+
+        // 取消注册开关控件事件
+        private void UnregisterToggleEvents()
+        {
+            System.Diagnostics.Debug.WriteLine("取消注册开关控件事件");
+            
+            if (AutoStartToggle != null)
+            {
+                AutoStartToggle.Checked -= Toggle_Checked;
+                AutoStartToggle.Unchecked -= Toggle_Checked;
+                System.Diagnostics.Debug.WriteLine("已取消注册AutoStartToggle事件");
+            }
+            
+            // 移除最小化到托盘开关的取消注册
+        }
+
+
+    }
+}

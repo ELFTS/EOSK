@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk.WindowsDesktop">
+	<PropertyGroup>
+		<OutputType>WinExe</OutputType>
+		<TargetFramework>net9.0-windows</TargetFramework>
+		<UseWPF>True</UseWPF>
+		<RootNamespace>EOSK</RootNamespace>
+		<AssemblyName>EOSK</AssemblyName>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<UseWindowsForms>False</UseWindowsForms>
+		<ApplicationIcon>Assets\Icons\logo.ico</ApplicationIcon>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="MaterialDesignThemes" Version="5.3.0" />
+		<PackageReference Include="MaterialDesignColors" Version="5.3.0" />
+		<PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Folder Include="Commands\" />
+	  <Folder Include="Components\" />
+	  <Folder Include="Models\" />
+	  <Folder Include="Services\" />
+	  <Folder Include="ViewModels\" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Resource Include="Assets\Icons\home.png" />
+		<Resource Include="Assets\Icons\music.png" />
+		<Resource Include="Assets\Icons\settings.png" />
+		<Resource Include="Assets\Icons\info.png" />
+		<Resource Include="Assets\Icons\sponsor.png" />
+		<Resource Include="Assets\Icons\logo.ico" />
+		<Resource Include="Assets\Icons\logo.png" />
+		<Resource Include="Assets\alipay_qr.png" />
+		<Resource Include="Assets\wechat_qr.png" />
+	</ItemGroup>
+</Project>
