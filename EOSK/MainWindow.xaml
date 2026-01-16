@@ -13,8 +13,11 @@
         WindowStyle="None"
         AllowsTransparency="True"
         Background="Transparent"
-        Opacity="1"
-        Icon="Assets/Icons/logo.ico">
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        Topmost="True"
+        Loaded="MainWindow_Loaded"
+        Closing="MainWindow_Closing">
     <Window.Resources>
         <!-- 淡入淡出动画 -->
         <Storyboard x:Key="FadeOutStoryboard">
@@ -93,175 +96,171 @@
     </Window.Resources>
     
     <materialDesign:DialogHost>
-        <Border Background="{DynamicResource MaterialDesignPaper}" 
-                CornerRadius="10"
-                BorderBrush="{DynamicResource MaterialDesignDivider}" 
-                BorderThickness="1"
-                Margin="10">
-            <Border.Effect>
-                <DropShadowEffect Color="Black" 
-                                  ShadowDepth="3" 
-                                  BlurRadius="10" 
-                                  Opacity="0.3"/>
-            </Border.Effect>
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/>
-                </Grid.RowDefinitions>
+        <Grid>
+            <Border Background="{DynamicResource MaterialDesignPaper}" 
+                    CornerRadius="10"
+                    BorderBrush="{DynamicResource MaterialDesignDivider}" 
+                    BorderThickness="1"
+                    Margin="10">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
 
-                <!-- 标题栏 -->
-                <Border Grid.Row="0" 
-                        Background="{DynamicResource TitleBarBackground}"
-                        CornerRadius="10,10,0,0"
-                        MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        
-                        <!-- 应用标题 -->
-                        <TextBlock Grid.Column="0" 
-                                   Text="万物屏幕键盘" 
-                                   Foreground="White"
-                                   VerticalAlignment="Center"
-                                   Margin="15,0,0,0"
-                                   FontSize="16"
-                                   FontWeight="Medium"/>
-                        
-                        <!-- 窗口控制按钮 -->
-                        <StackPanel Grid.Column="1" 
-                                    Orientation="Horizontal"
-                                    Margin="0,0,10,0">
-                            <Button x:Name="MinimizeButton"
-                                    Style="{StaticResource MaterialDesignFlatButton}"
-                                    Foreground="White"
-                                    Click="MinimizeButton_Click"
-                                    ToolTip="最小化">
-                                <Button.Effect>
-                                    <DropShadowEffect x:Name="MinimizeShadow" 
-                                                      ShadowDepth="0" 
-                                                      BlurRadius="10" 
-                                                      Color="Yellow"
-                                                      Opacity="0"/>
-                                </Button.Effect>
-                                <Button.Resources>
-                                    <Storyboard x:Key="MinimizeButtonHoverOn">
-                                        <DoubleAnimation Storyboard.TargetName="MinimizeShadow"
-                                                         Storyboard.TargetProperty="Opacity"
-                                                         From="0" To="1.0" Duration="0:0:0.1"/>
-                                        <DoubleAnimation Storyboard.TargetName="MinimizeShadow"
-                                                         Storyboard.TargetProperty="BlurRadius"
-                                                         From="10" To="25" Duration="0:0:0.1"/>
-                                    </Storyboard>
-                                    <Storyboard x:Key="MinimizeButtonHoverOff">
-                                        <DoubleAnimation Storyboard.TargetName="MinimizeShadow"
-                                                         Storyboard.TargetProperty="Opacity"
-                                                         From="1.0" To="0" Duration="0:0:0.1"/>
-                                        <DoubleAnimation Storyboard.TargetName="MinimizeShadow"
-                                                         Storyboard.TargetProperty="BlurRadius"
-                                                         From="25" To="10" Duration="0:0:0.1"/>
-                                    </Storyboard>
-                                </Button.Resources>
-                                <Button.Triggers>
-                                    <EventTrigger RoutedEvent="Mouse.MouseEnter">
-                                        <BeginStoryboard Storyboard="{StaticResource MinimizeButtonHoverOn}"/>
-                                    </EventTrigger>
-                                    <EventTrigger RoutedEvent="Mouse.MouseLeave">
-                                        <BeginStoryboard Storyboard="{StaticResource MinimizeButtonHoverOff}"/>
-                                    </EventTrigger>
-                                </Button.Triggers>
-                                <materialDesign:PackIcon Kind="WindowMinimize"/>
-                            </Button>
+                    <!-- 标题栏 -->
+                    <Border Grid.Row="0" 
+                            Background="{DynamicResource TitleBarBackground}"
+                            CornerRadius="10,10,0,0"
+                            MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
                             
-                            <Button x:Name="CloseButton"
-                                    Style="{StaticResource MaterialDesignFlatButton}"
-                                    Foreground="White"
-                                    Click="CloseButton_Click"
-                                    ToolTip="关闭">
-                                <Button.Effect>
-                                    <DropShadowEffect x:Name="CloseShadow" 
-                                                      ShadowDepth="0" 
-                                                      BlurRadius="10" 
-                                                      Color="Yellow"
-                                                      Opacity="0"/>
-                                </Button.Effect>
-                                <Button.Resources>
-                                    <Storyboard x:Key="CloseButtonHoverOn">
-                                        <DoubleAnimation Storyboard.TargetName="CloseShadow"
-                                                         Storyboard.TargetProperty="Opacity"
-                                                         From="0" To="1.0" Duration="0:0:0.1"/>
-                                        <DoubleAnimation Storyboard.TargetName="CloseShadow"
-                                                         Storyboard.TargetProperty="BlurRadius"
-                                                         From="10" To="25" Duration="0:0:0.1"/>
-                                    </Storyboard>
-                                    <Storyboard x:Key="CloseButtonHoverOff">
-                                        <DoubleAnimation Storyboard.TargetName="CloseShadow"
-                                                         Storyboard.TargetProperty="Opacity"
-                                                         From="1.0" To="0" Duration="0:0:0.1"/>
-                                        <DoubleAnimation Storyboard.TargetName="CloseShadow"
-                                                         Storyboard.TargetProperty="BlurRadius"
-                                                         From="25" To="10" Duration="0:0:0.1"/>
-                                    </Storyboard>
-                                </Button.Resources>
-                                <Button.Triggers>
-                                    <EventTrigger RoutedEvent="Mouse.MouseEnter">
-                                        <BeginStoryboard Storyboard="{StaticResource CloseButtonHoverOn}"/>
-                                    </EventTrigger>
-                                    <EventTrigger RoutedEvent="Mouse.MouseLeave">
-                                        <BeginStoryboard Storyboard="{StaticResource CloseButtonHoverOff}"/>
-                                    </EventTrigger>
-                                </Button.Triggers>
-                                <materialDesign:PackIcon Kind="WindowClose"/>
-                            </Button>
-                        </StackPanel>
-                    </Grid>
-                </Border>
-                
-                <!-- 主内容区域 -->
-                <Border Grid.Row="1" 
-                        Background="{DynamicResource MaterialDesignPaper}"
-                        CornerRadius="0,0,10,10">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="60"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-
-                        <!-- 侧边栏 -->
-                        <Border Grid.Column="0" 
-                                Background="{DynamicResource MaterialDesignBackground}"
-                                CornerRadius="0,0,0,10">
-                            <Grid>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="*"/>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="2*"/>
-                                </Grid.RowDefinitions>
+                            <!-- 应用标题 -->
+                            <TextBlock Grid.Column="0" 
+                                       Text="万物屏幕键盘" 
+                                       Foreground="White"
+                                       VerticalAlignment="Center"
+                                       Margin="15,0,0,0"
+                                       FontSize="16"
+                                       FontWeight="Medium"/>
+                            
+                            <!-- 窗口控制按钮 -->
+                            <StackPanel Grid.Column="1" 
+                                        Orientation="Horizontal"
+                                        Margin="0,0,10,0">
+                                <Button x:Name="MinimizeButton"
+                                        Style="{StaticResource MaterialDesignFlatButton}"
+                                        Foreground="White"
+                                        Click="MinimizeButton_Click"
+                                        ToolTip="最小化">
+                                    <Button.Effect>
+                                        <DropShadowEffect x:Name="MinimizeShadow" 
+                                                          ShadowDepth="0" 
+                                                          BlurRadius="10" 
+                                                          Color="Yellow"
+                                                          Opacity="0"/>
+                                    </Button.Effect>
+                                    <Button.Resources>
+                                        <Storyboard x:Key="MinimizeButtonHoverOn">
+                                            <DoubleAnimation Storyboard.TargetName="MinimizeShadow"
+                                                             Storyboard.TargetProperty="Opacity"
+                                                             From="0" To="1.0" Duration="0:0:0.1"/>
+                                            <DoubleAnimation Storyboard.TargetName="MinimizeShadow"
+                                                             Storyboard.TargetProperty="BlurRadius"
+                                                             From="10" To="25" Duration="0:0:0.1"/>
+                                        </Storyboard>
+                                        <Storyboard x:Key="MinimizeButtonHoverOff">
+                                            <DoubleAnimation Storyboard.TargetName="MinimizeShadow"
+                                                             Storyboard.TargetProperty="Opacity"
+                                                             From="1.0" To="0" Duration="0:0:0.1"/>
+                                            <DoubleAnimation Storyboard.TargetName="MinimizeShadow"
+                                                             Storyboard.TargetProperty="BlurRadius"
+                                                             From="25" To="10" Duration="0:0:0.1"/>
+                                        </Storyboard>
+                                    </Button.Resources>
+                                    <Button.Triggers>
+                                        <EventTrigger RoutedEvent="Mouse.MouseEnter">
+                                            <BeginStoryboard Storyboard="{StaticResource MinimizeButtonHoverOn}"/>
+                                        </EventTrigger>
+                                        <EventTrigger RoutedEvent="Mouse.MouseLeave">
+                                            <BeginStoryboard Storyboard="{StaticResource MinimizeButtonHoverOff}"/>
+                                        </EventTrigger>
+                                    </Button.Triggers>
+                                    <materialDesign:PackIcon Kind="WindowMinimize"/>
+                                </Button>
                                 
-                                <ScrollViewer Grid.Row="1" 
-                                              VerticalScrollBarVisibility="Auto"
-                                              HorizontalAlignment="Stretch">
-                                    <StackPanel x:Name="SidebarPanel" 
-                                                Margin="0,20"
-                                                VerticalAlignment="Center"/>
-                                </ScrollViewer>
-                            </Grid>
-                        </Border>
+                                <Button x:Name="CloseButton"
+                                        Style="{StaticResource MaterialDesignFlatButton}"
+                                        Foreground="White"
+                                        Click="CloseButton_Click"
+                                        ToolTip="关闭">
+                                    <Button.Effect>
+                                        <DropShadowEffect x:Name="CloseShadow" 
+                                                          ShadowDepth="0" 
+                                                          BlurRadius="10" 
+                                                          Color="Yellow"
+                                                          Opacity="0"/>
+                                    </Button.Effect>
+                                    <Button.Resources>
+                                        <Storyboard x:Key="CloseButtonHoverOn">
+                                            <DoubleAnimation Storyboard.TargetName="CloseShadow"
+                                                             Storyboard.TargetProperty="Opacity"
+                                                             From="0" To="1.0" Duration="0:0:0.1"/>
+                                            <DoubleAnimation Storyboard.TargetName="CloseShadow"
+                                                             Storyboard.TargetProperty="BlurRadius"
+                                                             From="10" To="25" Duration="0:0:0.1"/>
+                                        </Storyboard>
+                                        <Storyboard x:Key="CloseButtonHoverOff">
+                                            <DoubleAnimation Storyboard.TargetName="CloseShadow"
+                                                             Storyboard.TargetProperty="Opacity"
+                                                             From="1.0" To="0" Duration="0:0:0.1"/>
+                                            <DoubleAnimation Storyboard.TargetName="CloseShadow"
+                                                             Storyboard.TargetProperty="BlurRadius"
+                                                             From="25" To="10" Duration="0:0:0.1"/>
+                                        </Storyboard>
+                                    </Button.Resources>
+                                    <Button.Triggers>
+                                        <EventTrigger RoutedEvent="Mouse.MouseEnter">
+                                            <BeginStoryboard Storyboard="{StaticResource CloseButtonHoverOn}"/>
+                                        </EventTrigger>
+                                        <EventTrigger RoutedEvent="Mouse.MouseLeave">
+                                            <BeginStoryboard Storyboard="{StaticResource CloseButtonHoverOff}"/>
+                                        </EventTrigger>
+                                    </Button.Triggers>
+                                    <materialDesign:PackIcon Kind="WindowClose"/>
+                                </Button>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                    
+                    <!-- 主内容区域 -->
+                    <Border Grid.Row="1" 
+                            Background="{DynamicResource MaterialDesignPaper}"
+                            CornerRadius="0,0,10,10">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="60"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
 
-                        <!-- 主内容区 -->
-                        <Border Grid.Column="1" 
-                                CornerRadius="0,0,10,0">
-                            <Grid>
-                                <ContentPresenter x:Name="MainContentArea" Opacity="1"/>
-                                
-                            </Grid>
-                        </Border>
-                        
-                    </Grid>
-                </Border>
-            </Grid>
-        </Border>
+                            <!-- 侧边栏 -->
+                            <Border Grid.Column="0" 
+                                    Background="{DynamicResource MaterialDesignBackground}"
+                                    CornerRadius="0,0,0,10">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="*"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="2*"/>
+                                    </Grid.RowDefinitions>
+                                    
+                                    <ScrollViewer Grid.Row="1" 
+                                                  VerticalScrollBarVisibility="Auto"
+                                                  HorizontalAlignment="Stretch">
+                                        <StackPanel x:Name="SidebarPanel" 
+                                                    Margin="0,20"
+                                                    VerticalAlignment="Center"/>
+                                    </ScrollViewer>
+                                </Grid>
+                            </Border>
+
+                            <!-- 主内容区 -->
+                            <Border Grid.Column="1" 
+                                    CornerRadius="0,0,10,0">
+                                <Grid>
+                                    <ContentPresenter x:Name="MainContentArea" Opacity="1"/>
+                                    
+                                </Grid>
+                            </Border>
+                            
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Border>
+        </Grid>
     </materialDesign:DialogHost>
 </Window>

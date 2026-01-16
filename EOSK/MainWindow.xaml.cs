@@ -29,13 +29,58 @@ namespace EOSK
         private SettingsView? _settingsView;
         
         // Windows API 常量
+        [DllImport("user32.dll")]
+        static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
 
+        [DllImport("user32.dll")]
+        static extern IntPtr GetForegroundWindow();
+
+        [DllImport("user32.dll")]
+        static extern bool PostMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
+
+        [DllImport("user32.dll")]
+        static extern uint MapVirtualKey(uint uCode, uint uMapType);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        static extern int GetWindowLong(IntPtr hWnd, int nIndex);
+
+        [DllImport("user32.dll")]
+        static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
+        
+        const int GWL_EXSTYLE = -20;
+        const int WS_EX_NOACTIVATE = 0x08000000;
+        
+        [DllImport("user32.dll")]
+        static extern short VkKeyScan(char ch);
+        
+        const uint WM_KEYDOWN = 0x0100;
+        const uint WM_KEYUP = 0x0101;
+        const uint MAPVK_VK_TO_VSC = 0;
+        
+        static readonly IntPtr HWND_TOPMOST = new IntPtr(-1);
+        static readonly IntPtr HWND_NOTOPMOST = new IntPtr(-2);
+        const uint SWP_NOMOVE = 0x0002;
+        const uint SWP_NOSIZE = 0x0001;
+        
+        // 保持窗口在最前的常量
+        const uint TOPMOST_FLAGS = SWP_NOMOVE | SWP_NOSIZE;
+        
         public MainWindow()
         {
             InitializeComponent();
             
             // 初始化导航
             InitializeNavigation();
+            
+            // 应用启动动画
+            ApplyStartupAnimation();
+            
+            InitializeSidebar();
+            // 默认加载主页内容
+            LoadContent("Home");
+            
+            // 确保标题栏颜色正确应用
+            ApplySavedTitleBarColor();
             
             Loaded += MainWindow_Loaded;
             Closing += MainWindow_Closing;
@@ -124,15 +169,118 @@ namespace EOSK
         /// </summary>
         private void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
-            // 应用启动动画
-            ApplyStartupAnimation();
+            // 设置窗口样式，使其不会获取焦点
+            var hwnd = new WindowInteropHelper(this).Handle;
             
-            InitializeSidebar();
-            // 默认加载主页内容
-            LoadContent("Home");
+            // 添加WS_EX_NOACTIVATE扩展样式，防止窗口获取焦点
+            int extendedStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
+            SetWindowLong(hwnd, GWL_EXSTYLE, extendedStyle | WS_EX_NOACTIVATE);
             
-            // 确保标题栏颜色正确应用
-            ApplySavedTitleBarColor();
+            // 设置窗口为顶层窗口但不影响焦点
+            SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, TOPMOST_FLAGS);
+            
+            // 设置窗口位置到右下角
+            PositionWindowToBottomRight();
+            
+            // 初始化拖动功能
+            InitializeDragFunctionality();
+            
+            // 初始化设置管理器
+            InitializeSettingsManager();
+            
+            // 应用保存的颜色主题
+            ApplySavedThemeColor();
+        }
+        
+        /// <summary>
+        /// 初始化拖动功能
+        /// </summary>
+        private void InitializeDragFunctionality()
+        {
+            // 实现窗口拖动功能
+        }
+        
+        /// <summary>
+        /// 初始化设置管理器
+        /// </summary>
+        private void InitializeSettingsManager()
+        {
+            // 初始化设置管理器
+        }
+        
+        /// <summary>
+        /// 应用保存的主题颜色
+        /// </summary>
+        private void ApplySavedThemeColor()
+        {
+            // 应用主题颜色
+        }
+        
+        /// <summary>
+        /// 应用保存的标题栏颜色
+        /// </summary>
+        private void ApplySavedTitleBarColor()
+        {
+            try
+            {
+                // 从设置管理器获取保存的颜色设置
+                var settings = ((App)Application.Current).SettingsManager.GetCurrentSettings();
+                System.Diagnostics.Debug.WriteLine($"从设置管理器获取的设置: ThemeColor={settings?.ThemeColor}");
+                
+                if (settings != null && !string.IsNullOrEmpty(settings.ThemeColor))
+                {
+                    var color = (Color)ColorConverter.ConvertFromString(settings.ThemeColor);
+                    if (Application.Current != null && Application.Current.Resources != null)
+                    {
+                        // 创建标题栏背景色画笔 - 使用线性渐变而不是纯色
+                        var titleBarBrush = BrushHelper.CreateTitleBarBrush(color);
+                        
+                        // 更新标题栏背景色资源
+                        Application.Current.Resources["TitleBarBackground"] = titleBarBrush;
+                        System.Diagnostics.Debug.WriteLine($"窗口加载时应用标题栏颜色: {color}");
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine("Application.Current或Resources为null，无法应用标题栏颜色");
+                    }
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("设置或主题颜色为空，使用默认紫色");
+                    // 使用默认紫色
+                    var defaultColor = Colors.Purple;
+                    var titleBarBrush = BrushHelper.CreateTitleBarBrush(defaultColor);
+                    if (Application.Current != null && Application.Current.Resources != null)
+                    {
+                        Application.Current.Resources["TitleBarBackground"] = titleBarBrush;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"应用保存的标题栏颜色时出错: {ex.Message}");
+                // 出错时使用默认紫色
+                var defaultColor = Colors.Purple;
+                var titleBarBrush = BrushHelper.CreateTitleBarBrush(defaultColor);
+                if (Application.Current != null && Application.Current.Resources != null)
+                {
+                    Application.Current.Resources["TitleBarBackground"] = titleBarBrush;
+                }
+            }
+        }
+
+        /// <summary>
+        /// 将窗口定位到右下角
+        /// </summary>
+        private void PositionWindowToBottomRight()
+        {
+            var screenWidth = SystemParameters.PrimaryScreenWidth;
+            var screenHeight = SystemParameters.PrimaryScreenHeight;
+            var windowWidth = this.Width;
+            var windowHeight = this.Height;
+
+            this.Left = screenWidth - windowWidth - 10; // 10像素边距
+            this.Top = screenHeight - windowHeight - 50; // 50像素边距
         }
         
         /// <summary>
@@ -195,56 +343,6 @@ namespace EOSK
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"垂直滑动动画失败: {ex.Message}");
-            }
-        }
-        
-        private void ApplySavedTitleBarColor()
-        {
-            try
-            {
-                // 从设置管理器获取保存的颜色设置
-                var settings = ((App)Application.Current).SettingsManager.GetCurrentSettings();
-                System.Diagnostics.Debug.WriteLine($"从设置管理器获取的设置: ThemeColor={settings?.ThemeColor}");
-                
-                if (settings != null && !string.IsNullOrEmpty(settings.ThemeColor))
-                {
-                    var color = (Color)ColorConverter.ConvertFromString(settings.ThemeColor);
-                    if (Application.Current != null && Application.Current.Resources != null)
-                    {
-                        // 创建标题栏背景色画笔 - 使用线性渐变而不是纯色
-                        var titleBarBrush = BrushHelper.CreateTitleBarBrush(color);
-                        
-                        // 更新标题栏背景色资源
-                        Application.Current.Resources["TitleBarBackground"] = titleBarBrush;
-                        System.Diagnostics.Debug.WriteLine($"窗口加载时应用标题栏颜色: {color}");
-                    }
-                    else
-                    {
-                        System.Diagnostics.Debug.WriteLine("Application.Current或Resources为null，无法应用标题栏颜色");
-                    }
-                }
-                else
-                {
-                    System.Diagnostics.Debug.WriteLine("设置或主题颜色为空，使用默认紫色");
-                    // 使用默认紫色
-                    var defaultColor = Colors.Purple;
-                    var titleBarBrush = BrushHelper.CreateTitleBarBrush(defaultColor);
-                    if (Application.Current != null && Application.Current.Resources != null)
-                    {
-                        Application.Current.Resources["TitleBarBackground"] = titleBarBrush;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"应用保存的标题栏颜色时出错: {ex.Message}");
-                // 出错时使用默认紫色
-                var defaultColor = Colors.Purple;
-                var titleBarBrush = BrushHelper.CreateTitleBarBrush(defaultColor);
-                if (Application.Current != null && Application.Current.Resources != null)
-                {
-                    Application.Current.Resources["TitleBarBackground"] = titleBarBrush;
-                }
             }
         }
 
@@ -575,58 +673,6 @@ namespace EOSK
         protected override void OnClosed(EventArgs e)
         {
             base.OnClosed(e);
-        }
-        
-    }
-    
-    // Windows API 调用所需的结构和方法
-    internal static class NativeMethods
-    {
-        // 常量定义（已移除WM_GETMINMAXINFO）
-
-        [DllImport("user32.dll")]
-        public static extern IntPtr MonitorFromWindow(IntPtr handle, int flags);
-
-        [DllImport("user32.dll")]
-        public static extern bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFO lpmi);
-
-        [StructLayout(LayoutKind.Sequential)]
-        public struct MINMAXINFO
-        {
-            public POINT ptReserved;
-            public POINT ptMinTrackSize;
-            public POINT ptMaxTrackSize;
-        }
-
-        [StructLayout(LayoutKind.Sequential)]
-        public struct POINT
-        {
-            public int X;
-            public int Y;
-
-            public POINT(int x, int y)
-            {
-                X = x;
-                Y = y;
-            }
-        }
-
-        [StructLayout(LayoutKind.Sequential)]
-        public struct RECT
-        {
-            public int Left;
-            public int Top;
-            public int Right;
-            public int Bottom;
-        }
-
-        [StructLayout(LayoutKind.Sequential)]
-        public struct MONITORINFO
-        {
-            public int cbSize;
-            public RECT rcMonitor;
-            public RECT rcWork;
-            public int dwFlags;
         }
     }
 }

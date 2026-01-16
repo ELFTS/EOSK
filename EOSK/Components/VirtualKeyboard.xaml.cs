@@ -1,12 +1,11 @@
 using System;
-using System.Collections.Generic;
-using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
 using System.Windows.Input;
-using System.Windows.Media;
-using Microsoft.Win32;
+using System.Windows.Media;  // 添加这个引用以使用Brush、Color、LinearGradientBrush
+using System.Runtime.InteropServices; // 添加这个引用以使用Windows API
+
+using System.Windows.Interop;
 
 namespace EOSK.Components
 {
@@ -21,15 +20,89 @@ namespace EOSK.Components
         // 当前选中的按键
         private Key _selectedKey;
         
+        // 导入Windows API
+        [DllImport("user32.dll")]
+        public static extern IntPtr GetWindowLong(IntPtr hWnd, int nIndex);
+
+        [DllImport("user32.dll")]
+        public static extern int SetWindowLong(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
+
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool SetForegroundWindow(IntPtr hWnd);
+
+        private const int GWL_EXSTYLE = -20;
+        private const int WS_EX_NOACTIVATE = 0x08000000;
+
+        [DllImport("user32.dll")]
+        public static extern IntPtr GetForegroundWindow();
+
+        [DllImport("user32.dll", SetLastError = true)]
+        public static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct INPUT
+        {
+            public uint type;
+            public INPUTUNION u;
+        }
+
+        [StructLayout(LayoutKind.Explicit)]
+        public struct INPUTUNION
+        {
+            [FieldOffset(0)]
+            public MOUSEINPUT mi;
+            [FieldOffset(0)]
+            public KEYBDINPUT ki;
+            [FieldOffset(0)]
+            public HARDWAREINPUT hi;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct MOUSEINPUT
+        {
+            public int dx;
+            public int dy;
+            public uint mouseData;
+            public uint dwFlags;
+            public uint time;
+            public IntPtr dwExtraInfo;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct KEYBDINPUT
+        {
+            public ushort wVk;
+            public ushort wScan;
+            public uint dwFlags;
+            public uint time;
+            public IntPtr dwExtraInfo;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct HARDWAREINPUT
+        {
+            public uint uMsg;
+            public ushort wParamL;
+            public ushort wParamH;
+        }
+
+        // 键盘输入标志
+        public const uint KEYEVENTF_KEYUP = 0x0002;
+
         public VirtualKeyboard()
         {
             InitializeComponent();
-        }
-        
-        // 设置服务引用（无参数版本）
-        public void SetServices()
-        {
-            // 不再使用ProfileManager，保留空方法
+            Loaded += (sender, args) =>
+            {
+                var window = Window.GetWindow(this);
+                if (window != null)
+                {
+                    var hwnd = new WindowInteropHelper(window).Handle;
+                    var extendedStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
+                    SetWindowLong(hwnd, GWL_EXSTYLE, (IntPtr)(extendedStyle.ToInt64() | WS_EX_NOACTIVATE));
+                }
+            };
         }
         
         // 按键点击事件
@@ -42,23 +115,49 @@ namespace EOSK.Components
                 {
                     _selectedKey = key;
                     
+                    // 发送按键事件
+                    SimulateKeyPress(key);
+                    
                     // 触发事件，以便更新UI
                     KeySelected?.Invoke(this, new VirtualKeyEventArgs(key));
                 }
             }
         }
 
-        // 设置按键的音效路径
-        public void SetKeySound(Key key, string soundPath)
+        // 模拟按键按下和释放
+        private void SimulateKeyPress(Key key)
         {
-            // 不再使用_profileManager，直接忽略
-        }
+            // 实时捕获当前的前台窗口并设置焦点
+            var targetWindowHandle = GetForegroundWindow();
+            if (targetWindowHandle != IntPtr.Zero)
+            {
+                SetForegroundWindow(targetWindowHandle);
+            }
 
-        // 获取按键的音效路径
-        public string? GetKeySound(Key key)
-        {
-            // 不再使用_profilemanager，直接返回null
-            return null;
+            // 获取虚拟键码
+            ushort virtualKeyCode = (ushort)KeyInterop.VirtualKeyFromKey(key);
+            
+            // 创建键盘输入结构
+            INPUT[] inputs = new INPUT[2];
+
+            // 按下按键
+            inputs[0].type = 1; // INPUT_KEYBOARD
+            inputs[0].u.ki.wVk = virtualKeyCode;
+            inputs[0].u.ki.wScan = 0;
+            inputs[0].u.ki.dwFlags = 0; // 按键按下
+            inputs[0].u.ki.time = 0;
+            inputs[0].u.ki.dwExtraInfo = IntPtr.Zero;
+
+            // 释放按键
+            inputs[1].type = 1; // INPUT_KEYBOARD
+            inputs[1].u.ki.wVk = virtualKeyCode;
+            inputs[1].u.ki.wScan = 0;
+            inputs[1].u.ki.dwFlags = KEYEVENTF_KEYUP; // 按键释放
+            inputs[1].u.ki.time = 0;
+            inputs[1].u.ki.dwExtraInfo = IntPtr.Zero;
+
+            // 发送输入
+            SendInput(2, inputs, Marshal.SizeOf<INPUT>());
         }
 
         // 刷新虚拟键盘的视觉状态
@@ -90,7 +189,7 @@ namespace EOSK.Components
                 // 所有按键默认使用默认颜色
                 else
                 {
-                    // 未分配音效的键使用默认颜色
+                    // 默认颜色
                     button.ClearValue(Button.BackgroundProperty);
                 }
             }
@@ -109,121 +208,6 @@ namespace EOSK.Components
         
         // 获取当前选中的按键
         public Key SelectedKey => _selectedKey;
-    }
-    
-    // 宽度到可见性转换器
-    public class WidthToVisibilityConverter : IValueConverter
-    {
-        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
-        {
-            if (value is double width)
-            {
-                return width > 0 ? Visibility.Visible : Visibility.Hidden;
-            }
-            return Visibility.Visible;
-        }
-
-        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
-        {
-            throw new NotImplementedException();
-        }
-    }
-    
-    // 布尔值到可见性转换器
-    public class BoolToVisibilityConverter : IValueConverter
-    {
-        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
-        {
-            if (value is bool boolValue)
-            {
-                return boolValue ? Visibility.Visible : Visibility.Collapsed;
-            }
-            return Visibility.Collapsed;
-        }
-
-        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
-        {
-            throw new NotImplementedException();
-        }
-    }
-    
-    // 布尔值到可见性反向转换器
-    public class BoolToVisibilityInverseConverter : IValueConverter
-    {
-        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
-        {
-            if (value is bool boolValue)
-            {
-                return boolValue ? Visibility.Collapsed : Visibility.Visible;
-            }
-            return Visibility.Visible;
-        }
-
-        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
-        {
-            throw new NotImplementedException();
-        }
-    }
-    
-    // 功能键可见性转换器（已注释掉对KeyDef的引用）
-    public class FunctionKeysVisibilityConverter : IValueConverter
-    {
-        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
-        {
-            // 由于我们在XAML中硬编码了所有按键，这个转换器实际上不会被使用
-            // 但为了保持代码完整性，我们保留它
-            return Visibility.Collapsed;
-        }
-
-        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
-        {
-            throw new NotImplementedException();
-        }
-    }
-    
-    // 占位符到透明度转换器（保留基本结构，但简化实现）
-    public class PlaceholderToOpacityConverter : IValueConverter
-    {
-        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
-        {
-            // 由于占位符功能已通过其他方式实现，这个转换器不再需要复杂逻辑
-            return 1.0;
-        }
-
-        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
-        {
-            throw new NotImplementedException();
-        }
-    }
-    
-    // 占位符到背景色转换器（保留基本结构，但简化实现）
-    public class PlaceholderToBackgroundColorConverter : IValueConverter
-    {
-        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
-        {
-            // 由于占位符功能已通过其他方式实现，这个转换器不再需要复杂逻辑
-            return Colors.White;
-        }
-
-        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
-        {
-            throw new NotImplementedException();
-        }
-    }
-    
-    // 占位符到前景色转换器（保留基本结构，但简化实现）
-    public class PlaceholderToForegroundColorConverter : IValueConverter
-    {
-        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
-        {
-            // 由于占位符功能已通过其他方式实现，这个转换器不再需要复杂逻辑
-            return new SolidColorBrush(Colors.Black);
-        }
-
-        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
-        {
-            throw new NotImplementedException();
-        }
     }
 
     // 按键事件参数类
